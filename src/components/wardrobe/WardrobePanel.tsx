@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Plus, Upload, Type, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Upload, Type, Trash2, Loader2, X, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,6 +14,15 @@ import type { WardrobeItem } from '@/types'
 import { resolveColor, itemGradient, CATEGORY_EMOJI } from '@/lib/colors'
 
 const CATEGORIES = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'bags', 'activewear', 'other']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_BYTES = 10 * 1024 * 1024
+
+type FileStatus = 'pending' | 'uploading' | 'done' | 'error'
+interface FileEntry {
+  file: File
+  preview: string
+  status: FileStatus
+}
 
 export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) {
   const router = useRouter()
@@ -21,10 +30,9 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
   const [filter, setFilter] = useState('all')
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'photo' | 'text'>('photo')
-  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [description, setDescription] = useState('')
-  const [preview, setPreview] = useState<string | null>(null)
-  const [file, setFile] = useState<File | null>(null)
+  const [entries, setEntries] = useState<FileEntry[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
   const visible = filter === 'all' ? items : items.filter(i => i.category === filter)
@@ -37,7 +45,6 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
       .then(r => r.json())
       .then(({ updated }) => {
         if (updated > 0) {
-          // Reload items to pick up the new image URLs
           fetch('/api/wardrobe')
             .then(r => r.json())
             .then(fresh => setItems(fresh))
@@ -48,57 +55,108 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handleFile(f: File) {
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
+  function addFiles(incoming: File[]) {
+    const valid = incoming.filter(f => ALLOWED_TYPES.includes(f.type) && f.size <= MAX_BYTES)
+    const invalid = incoming.length - valid.length
+    if (invalid > 0) toast.error(`${invalid} file${invalid > 1 ? 's' : ''} skipped — must be JPG/PNG/WEBP under 10 MB`)
+    if (!valid.length) return
+    const newEntries: FileEntry[] = valid.map(f => ({ file: f, preview: URL.createObjectURL(f), status: 'pending' }))
+    setEntries(prev => [...prev, ...newEntries])
   }
 
-  async function handleAdd() {
-    setLoading(true)
+  function removeEntry(index: number) {
+    setEntries(prev => {
+      URL.revokeObjectURL(prev[index].preview)
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
+  function resetDialog() {
+    setEntries(prev => { prev.forEach(e => URL.revokeObjectURL(e.preview)); return [] })
+    setDescription('')
+  }
+
+  async function uploadOne(entry: FileEntry, index: number): Promise<WardrobeItem | null> {
+    setEntries(prev => prev.map((e, i) => i === index ? { ...e, status: 'uploading' } : e))
     try {
       const form = new FormData()
-      if (mode === 'photo' && file) form.append('image', file)
-      else if (mode === 'text' && description) form.append('description', description)
-      else { toast.error('Add an image or description'); setLoading(false); return }
+      form.append('image', entry.file)
+      const res = await fetch('/api/wardrobe', { method: 'POST', body: form })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+      const item: WardrobeItem = await res.json()
+      setEntries(prev => prev.map((e, i) => i === index ? { ...e, status: 'done' } : e))
+      setItems(prev => [item, ...prev])
+      return item
+    } catch {
+      setEntries(prev => prev.map((e, i) => i === index ? { ...e, status: 'error' } : e))
+      return null
+    }
+  }
 
+  async function handleAddPhotos() {
+    if (!entries.length) { toast.error('Select at least one photo'); return }
+    setUploading(true)
+    const results = await Promise.allSettled(entries.map((e, i) => uploadOne(e, i)))
+    const succeeded = results.filter(r => r.status === 'fulfilled' && r.value !== null).length
+    const failed = entries.length - succeeded
+    setUploading(false)
+
+    if (succeeded > 0) {
+      toast.success(`${succeeded} item${succeeded > 1 ? 's' : ''} added to wardrobe${failed > 0 ? `, ${failed} failed` : ''}`)
+      router.refresh()
+    } else {
+      toast.error('All uploads failed — check your files and try again')
+    }
+
+    if (failed === 0) {
+      setOpen(false)
+      resetDialog()
+    }
+    // If some failed, keep dialog open so user can see which ones failed
+  }
+
+  async function handleAddText() {
+    if (!description.trim()) { toast.error('Add a description'); return }
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('description', description)
       const res = await fetch('/api/wardrobe', { method: 'POST', body: form })
       if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
       const item = await res.json()
       setItems(prev => [item, ...prev])
       toast.success('Item added to wardrobe')
       setOpen(false)
-      setFile(null); setPreview(null); setDescription('')
+      resetDialog()
       router.refresh()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to add item')
     } finally {
-      setLoading(false)
+      setUploading(false)
     }
   }
 
-  async function handleDelete(id: string) {
-    const res = await fetch('/api/wardrobe', { method: 'DELETE', body: JSON.stringify({ id }), headers: { 'Content-Type': 'application/json' } })
-    if (res.ok) { setItems(prev => prev.filter(i => i.id !== id)); router.refresh() }
-    else toast.error('Failed to remove item')
-  }
+  const pendingCount = entries.filter(e => e.status === 'pending').length
+  const allDone = entries.length > 0 && entries.every(e => e.status === 'done' || e.status === 'error')
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-stone-500">{items.length} item{items.length !== 1 ? 's' : ''} in your wardrobe</p>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) resetDialog() }}>
           <DialogTrigger className="inline-flex items-center justify-center gap-1.5 rounded-md bg-stone-800 hover:bg-stone-900 text-white text-sm px-3 h-8 font-medium transition-colors">
             <Plus className="h-3.5 w-3.5" /> Add Item
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-light">Add to wardrobe</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Mode toggle */}
               <div className="flex gap-2">
                 <Button variant={mode === 'photo' ? 'default' : 'outline'} size="sm" onClick={() => setMode('photo')} className={mode === 'photo' ? 'bg-stone-800' : ''}>
-                  <Upload className="h-3.5 w-3.5 mr-1.5" /> Photo
+                  <Upload className="h-3.5 w-3.5 mr-1.5" /> Photos
                 </Button>
                 <Button variant={mode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setMode('text')} className={mode === 'text' ? 'bg-stone-800' : ''}>
                   <Type className="h-3.5 w-3.5 mr-1.5" /> Describe
@@ -106,24 +164,84 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
               </div>
 
               {mode === 'photo' ? (
-                <div
-                  className="border-2 border-dashed border-stone-200 rounded-lg p-8 text-center cursor-pointer hover:border-stone-400 transition-colors"
-                  onClick={() => fileRef.current?.click()}
-                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
-                  onDragOver={e => e.preventDefault()}
-                >
-                  {preview ? (
-                    <div className="relative h-40 w-full">
-                      <Image src={preview} alt="Preview" fill className="object-contain" />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Upload className="h-8 w-8 text-stone-300 mx-auto" />
-                      <p className="text-sm text-stone-400">Drop a photo or click to upload</p>
-                      <p className="text-xs text-stone-300">JPG, PNG, WEBP up to 10MB</p>
+                <div className="space-y-3">
+                  {/* Drop zone — always visible so more files can be added */}
+                  <div
+                    className="border-2 border-dashed border-stone-200 rounded-lg p-5 text-center cursor-pointer hover:border-stone-400 transition-colors"
+                    onClick={() => fileRef.current?.click()}
+                    onDrop={e => { e.preventDefault(); addFiles(Array.from(e.dataTransfer.files)) }}
+                    onDragOver={e => e.preventDefault()}
+                  >
+                    <Upload className="h-6 w-6 text-stone-300 mx-auto mb-1.5" />
+                    <p className="text-sm text-stone-400">Drop photos or click to select</p>
+                    <p className="text-xs text-stone-300 mt-0.5">JPG, PNG, WEBP · up to 10 MB each · multiple allowed</p>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      multiple
+                      onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); e.target.value = '' }}
+                    />
+                  </div>
+
+                  {/* Thumbnail grid */}
+                  {entries.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-0.5">
+                      {entries.map((entry, i) => (
+                        <div key={i} className="relative aspect-square rounded-md overflow-hidden bg-stone-100 group">
+                          <Image src={entry.preview} alt={`Photo ${i + 1}`} fill className="object-cover" />
+
+                          {/* Status overlay */}
+                          {entry.status === 'uploading' && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <Loader2 className="h-5 w-5 text-white animate-spin" />
+                            </div>
+                          )}
+                          {entry.status === 'done' && (
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                              <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            </div>
+                          )}
+                          {entry.status === 'error' && (
+                            <div className="absolute inset-0 bg-red-900/40 flex items-center justify-center">
+                              <AlertCircle className="h-5 w-5 text-red-300" />
+                            </div>
+                          )}
+
+                          {/* Remove button — only when not in flight */}
+                          {entry.status !== 'uploading' && !allDone && (
+                            <button
+                              onClick={() => removeEntry(i)}
+                              className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3 text-white" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <input ref={fileRef} type="file" className="hidden" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+
+                  {entries.length > 0 && (
+                    <p className="text-xs text-stone-400">
+                      {allDone
+                        ? `${entries.filter(e => e.status === 'done').length} added · ${entries.filter(e => e.status === 'error').length} failed`
+                        : `${entries.length} photo${entries.length > 1 ? 's' : ''} selected`}
+                    </p>
+                  )}
+
+                  <Button
+                    onClick={handleAddPhotos}
+                    disabled={uploading || entries.length === 0 || allDone}
+                    className="w-full bg-stone-800 hover:bg-stone-900"
+                  >
+                    {uploading
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analysing with AI…</>
+                      : entries.length > 1
+                      ? `Add ${pendingCount || entries.length} item${(pendingCount || entries.length) !== 1 ? 's' : ''} to wardrobe`
+                      : 'Add to wardrobe'}
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -135,12 +253,11 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
                     rows={3}
                   />
                   <p className="text-xs text-stone-400">Be specific — color, fabric, fit, and style help Anticipa match it accurately.</p>
+                  <Button onClick={handleAddText} disabled={uploading} className="w-full bg-stone-800 hover:bg-stone-900 mt-1">
+                    {uploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analysing with AI…</> : 'Add to wardrobe'}
+                  </Button>
                 </div>
               )}
-
-              <Button onClick={handleAdd} disabled={loading} className="w-full bg-stone-800 hover:bg-stone-900">
-                {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analysing with AI…</> : 'Add to wardrobe'}
-              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -183,6 +300,12 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
       )}
     </div>
   )
+
+  async function handleDelete(id: string) {
+    const res = await fetch('/api/wardrobe', { method: 'DELETE', body: JSON.stringify({ id }), headers: { 'Content-Type': 'application/json' } })
+    if (res.ok) { setItems(prev => prev.filter(i => i.id !== id)); router.refresh() }
+    else toast.error('Failed to remove item')
+  }
 }
 
 function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: string) => void }) {
@@ -203,7 +326,6 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
             )}
           </div>
         ) : (
-          /* Text item — emoji tile + description in white area below */
           <div
             className="flex items-center justify-center py-8"
             style={{ background: gradient }}
