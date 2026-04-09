@@ -111,7 +111,7 @@ export default function WishlistPanel({ initial }: { initial: WishlistItem[] }) 
             <DialogHeader>
               <DialogTitle className="font-light">Add to wishlist</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[calc(90vh-6rem)] overflow-y-auto pr-0.5">
               {/* Mode toggle */}
               <div className="flex gap-2">
                 <Button variant={mode === 'url' ? 'default' : 'outline'} size="sm" onClick={() => setMode('url')} className={mode === 'url' ? 'bg-stone-800' : ''}>

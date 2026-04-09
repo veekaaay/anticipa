@@ -91,7 +91,7 @@ export default function StyleProfilePanel({ initial }: Props) {
   }
 
   return (
-    <div className="space-y-8 max-w-xl">
+    <div className="space-y-8 max-w-xl pb-20">
       {/* Username */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-stone-700">Your name</Label>

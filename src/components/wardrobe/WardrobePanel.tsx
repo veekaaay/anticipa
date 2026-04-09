@@ -152,7 +152,7 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
             <DialogHeader>
               <DialogTitle className="font-light">Add to wardrobe</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[calc(90vh-6rem)] overflow-y-auto pr-0.5">
               {/* Mode toggle */}
               <div className="flex gap-2">
                 <Button variant={mode === 'photo' ? 'default' : 'outline'} size="sm" onClick={() => setMode('photo')} className={mode === 'photo' ? 'bg-stone-800' : ''}>
