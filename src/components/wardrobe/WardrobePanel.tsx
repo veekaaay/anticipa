@@ -315,16 +315,22 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
   return (
     <Card className="group border-stone-200 shadow-none overflow-hidden">
       {/* Visual area */}
-      <div className="relative bg-stone-50" style={{ aspectRatio: item.image_url ? '3/4' : 'auto' }}>
+      <div className={`relative ${item.image_url ? 'aspect-[3/4]' : ''}`}>
         {item.image_url ? (
-          <div className="relative aspect-[3/4]">
-            <Image src={item.image_url} alt={item.description || item.category} fill className="object-cover" />
+          <>
+            <Image
+              src={item.image_url}
+              alt={item.description || item.category}
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 640px) 50vw, 33vw"
+            />
             {item.brand && (
               <div className="absolute bottom-2 left-2">
                 <span className="text-[10px] bg-white/90 text-stone-600 px-1.5 py-0.5 rounded font-medium shadow-sm">{item.brand}</span>
               </div>
             )}
-          </div>
+          </>
         ) : (
           <div
             className="flex items-center justify-center py-8"

@@ -118,9 +118,9 @@ function RecommendationCard({ rec, rank }: { rec: Recommendation; rank: number }
   return (
     <Card className="border-stone-200 shadow-none overflow-hidden flex flex-col">
       {/* Image / placeholder — tall and impactful */}
-      <div className="relative h-52 flex-shrink-0" style={{ background: gradient }}>
+      <div className="relative h-52 flex-shrink-0 overflow-hidden" style={{ background: gradient }}>
         {rec.image_url ? (
-          <Image src={rec.image_url} alt={rec.title} fill className="object-cover" />
+          <Image src={rec.image_url} alt={rec.title} fill className="object-cover object-center" sizes="(max-width: 640px) 100vw, 50vw" />
         ) : (
           <div className="h-full flex flex-col items-center justify-center gap-3">
             <span className="text-7xl drop-shadow-sm">{emoji}</span>
