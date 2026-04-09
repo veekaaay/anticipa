@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Sparkles, RefreshCw, Loader2, ExternalLink, Shirt } from 'lucide-react'
@@ -34,8 +34,6 @@ export default function RecommendationsPanel({
   const router = useRouter()
   const [recs, setRecs] = useState(initial)
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => { setRecs(initial) }, [initial])
 
   const canGenerate = wardrobeCount > 0 || wishlistCount > 0
 

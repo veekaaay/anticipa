@@ -18,9 +18,6 @@ const CATEGORIES = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', '
 export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) {
   const router = useRouter()
   const [items, setItems] = useState(initial)
-
-  // Sync if server re-renders with fresh data (e.g. after router.refresh())
-  useEffect(() => { setItems(initial) }, [initial])
   const [filter, setFilter] = useState('all')
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'photo' | 'text'>('photo')
