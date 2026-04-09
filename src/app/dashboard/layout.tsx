@@ -10,7 +10,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-stone-50">
       <DashboardNav userEmail={user.email!} />
-      <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
+      <main className="max-w-6xl mx-auto px-4 py-5 sm:py-8">{children}</main>
     </div>
   )
 }

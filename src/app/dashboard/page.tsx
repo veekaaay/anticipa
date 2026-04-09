@@ -82,21 +82,25 @@ export default async function DashboardPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="recommendations" className="space-y-6">
-        <TabsList className="bg-stone-100 border border-stone-200">
-          <TabsTrigger value="recommendations" className="gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> Picks
-            {recCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({recCount})</span>}
+        <TabsList className="bg-stone-100 border border-stone-200 w-full">
+          <TabsTrigger value="recommendations" className="gap-1.5 flex-1">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Picks</span>
+            {recCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400 hidden sm:inline">({recCount})</span>}
           </TabsTrigger>
-          <TabsTrigger value="wardrobe" className="gap-1.5">
-            <Shirt className="h-3.5 w-3.5" /> Wardrobe
-            {wardrobeCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({wardrobeCount})</span>}
+          <TabsTrigger value="wardrobe" className="gap-1.5 flex-1">
+            <Shirt className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Wardrobe</span>
+            {wardrobeCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400 hidden sm:inline">({wardrobeCount})</span>}
           </TabsTrigger>
-          <TabsTrigger value="wishlist" className="gap-1.5">
-            <Heart className="h-3.5 w-3.5" /> Wishlist
-            {wishlistCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({wishlistCount})</span>}
+          <TabsTrigger value="wishlist" className="gap-1.5 flex-1">
+            <Heart className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Wishlist</span>
+            {wishlistCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400 hidden sm:inline">({wishlistCount})</span>}
           </TabsTrigger>
-          <TabsTrigger value="profile" className="gap-1.5">
-            <User className="h-3.5 w-3.5" /> My Style
+          <TabsTrigger value="profile" className="gap-1.5 flex-1">
+            <User className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">My Style</span>
           </TabsTrigger>
         </TabsList>
 
