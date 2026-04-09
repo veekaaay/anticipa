@@ -9,6 +9,22 @@ function parseJSON<T>(text: string): T {
   return JSON.parse(clean) as T
 }
 
+/** Retry a Gemini call up to 3 times on 503/429 with exponential backoff */
+async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const isRetryable = msg.includes('503') || msg.includes('429') || msg.includes('Service Unavailable') || msg.includes('Too Many Requests')
+      if (!isRetryable || attempt === retries) throw err
+      const delay = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
+      await new Promise(r => setTimeout(r, delay))
+    }
+  }
+  throw new Error('Unreachable')
+}
+
 const FALLBACK_ANALYSIS: GeminiWardrobeAnalysis = {
   category: 'other',
   subcategory: null,
@@ -33,10 +49,10 @@ export async function analyseWardrobeImage(imageBase64: string, mimeType: string
 Return only valid JSON, no markdown.`
 
   try {
-    const result = await model.generateContent([
+    const result = await withRetry(() => model.generateContent([
       { inlineData: { data: imageBase64, mimeType } },
       prompt,
-    ])
+    ]))
     return parseJSON<GeminiWardrobeAnalysis>(result.response.text())
   } catch {
     return FALLBACK_ANALYSIS
@@ -59,7 +75,7 @@ Return a JSON object with exactly these fields:
 Return only valid JSON, no markdown.`
 
   try {
-    const result = await model.generateContent(prompt)
+    const result = await withRetry(() => model.generateContent(prompt))
     return parseJSON<GeminiWardrobeAnalysis>(result.response.text())
   } catch {
     return { ...FALLBACK_ANALYSIS, description }
@@ -165,7 +181,7 @@ Return a JSON array of exactly 6 objects, sorted by score descending:
 
 Return only a valid JSON array. No markdown, no explanation, no preamble.`
 
-  const result = await model.generateContent(prompt)
+  const result = await withRetry(() => model.generateContent(prompt))
   const recs = parseJSON<GeminiRecommendation[]>(result.response.text())
 
   if (!Array.isArray(recs)) throw new Error('Gemini returned unexpected format for recommendations')
