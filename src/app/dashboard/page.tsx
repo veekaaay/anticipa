@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Sparkles, Shirt, Heart, ShoppingBag } from 'lucide-react'
+import { Sparkles, Shirt, Heart } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import RecommendationsPanel from '@/components/recommendations/RecommendationsPanel'
 import WardrobePanel from '@/components/wardrobe/WardrobePanel'

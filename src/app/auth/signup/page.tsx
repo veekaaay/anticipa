@@ -1,7 +1,5 @@
 'use client'
-export const dynamic = 'force-dynamic'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -16,7 +14,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
   async function handleSignup(e: React.FormEvent) {

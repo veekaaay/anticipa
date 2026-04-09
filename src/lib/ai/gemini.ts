@@ -3,7 +3,21 @@ import type { GeminiWardrobeAnalysis, GeminiRecommendation, WardrobeItem, Wishli
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
-// Analyse a wardrobe photo and extract clothing metadata
+function parseJSON<T>(text: string): T {
+  // Strip markdown code fences if Gemini wraps the response
+  const clean = text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+  return JSON.parse(clean) as T
+}
+
+const FALLBACK_ANALYSIS: GeminiWardrobeAnalysis = {
+  category: 'other',
+  subcategory: null,
+  colors: [],
+  style_tags: [],
+  brand: null,
+  description: 'Item added manually',
+}
+
 export async function analyseWardrobeImage(imageBase64: string, mimeType: string): Promise<GeminiWardrobeAnalysis> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
@@ -18,16 +32,17 @@ export async function analyseWardrobeImage(imageBase64: string, mimeType: string
 }
 Return only valid JSON, no markdown.`
 
-  const result = await model.generateContent([
-    { inlineData: { data: imageBase64, mimeType } },
-    prompt,
-  ])
-
-  const text = result.response.text().trim()
-  return JSON.parse(text) as GeminiWardrobeAnalysis
+  try {
+    const result = await model.generateContent([
+      { inlineData: { data: imageBase64, mimeType } },
+      prompt,
+    ])
+    return parseJSON<GeminiWardrobeAnalysis>(result.response.text())
+  } catch {
+    return FALLBACK_ANALYSIS
+  }
 }
 
-// Analyse a text description of a wardrobe item
 export async function analyseWardrobeText(description: string): Promise<GeminiWardrobeAnalysis> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
@@ -43,12 +58,14 @@ Return a JSON object with exactly these fields:
 }
 Return only valid JSON, no markdown.`
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  return JSON.parse(text) as GeminiWardrobeAnalysis
+  try {
+    const result = await model.generateContent(prompt)
+    return parseJSON<GeminiWardrobeAnalysis>(result.response.text())
+  } catch {
+    return { ...FALLBACK_ANALYSIS, description }
+  }
 }
 
-// Generate curated shopping recommendations from wardrobe + wishlist
 export async function generateRecommendations(
   wardrobe: WardrobeItem[],
   wishlist: WishlistItem[],
@@ -97,8 +114,8 @@ Return a JSON array of 6 objects, each with:
 Sort by score descending. Return only valid JSON array, no markdown.`
 
   const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  // Strip markdown code blocks if present
-  const clean = text.replace(/^```json\n?/, '').replace(/\n?```$/, '')
-  return JSON.parse(clean) as GeminiRecommendation[]
+  const recs = parseJSON<GeminiRecommendation[]>(result.response.text())
+
+  if (!Array.isArray(recs)) throw new Error('Gemini returned unexpected format for recommendations')
+  return recs
 }

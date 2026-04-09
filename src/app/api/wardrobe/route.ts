@@ -22,7 +22,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const formData = await req.formData()
+  let formData: FormData
+  try {
+    formData = await req.formData()
+  } catch {
+    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
+  }
   const file = formData.get('image') as File | null
   const textDescription = formData.get('description') as string | null
 
@@ -72,7 +77,12 @@ export async function DELETE(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await req.json()
+  let id: string
+  try {
+    ({ id } = await req.json())
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
   const { error } = await supabase
     .from('wardrobe_items')
     .delete()

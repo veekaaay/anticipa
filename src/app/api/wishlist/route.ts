@@ -23,7 +23,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { url } = await req.json()
+  let url: string
+  try {
+    ({ url } = await req.json())
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
   if (!url) return NextResponse.json({ error: 'URL required' }, { status: 400 })
 
   // Scrape items from the URL
@@ -78,7 +83,12 @@ export async function DELETE(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await req.json()
+  let id: string
+  try {
+    ({ id } = await req.json())
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
   const { error } = await supabase
     .from('wishlist_items')
     .delete()

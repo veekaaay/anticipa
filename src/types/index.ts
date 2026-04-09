@@ -57,7 +57,7 @@ export interface Recommendation {
 
 export interface GeminiWardrobeAnalysis {
   category: string
-  subcategory: string
+  subcategory: string | null
   colors: string[]
   style_tags: string[]
   brand: string | null
