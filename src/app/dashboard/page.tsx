@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   const wardrobeCount = wardrobe?.length ?? 0
   const wishlistCount = wishlist?.length ?? 0
   const recCount = recommendations?.length ?? 0
-  const handle = user!.email!.split('@')[0]
+  const handle = (profile as StyleProfile | null)?.username || user!.email!.split('@')[0]
 
   // Nudge copy based on what's missing
   const nudge = wardrobeCount === 0

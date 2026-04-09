@@ -315,14 +315,14 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
   return (
     <Card className="group border-stone-200 shadow-none overflow-hidden">
       {/* Visual area */}
-      <div className={`relative ${item.image_url ? 'aspect-[3/4]' : ''}`}>
+      <div className={`relative overflow-hidden ${item.image_url ? 'aspect-[3/4]' : ''}`}>
         {item.image_url ? (
           <>
             <Image
               src={item.image_url}
               alt={item.description || item.category}
               fill
-              className="object-cover object-center"
+              style={{ objectFit: 'cover', objectPosition: 'center top' }}
               sizes="(max-width: 640px) 50vw, 33vw"
             />
             {item.brand && (

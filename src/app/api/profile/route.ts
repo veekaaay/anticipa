@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const allowed = ['gender', 'dominant_styles', 'color_palette', 'preferred_categories', 'budget_min', 'budget_max']
+  const allowed = ['username', 'gender', 'dominant_styles', 'color_palette', 'preferred_categories', 'budget_min', 'budget_max']
   const update: Record<string, unknown> = { user_id: user.id, updated_at: new Date().toISOString() }
   for (const key of allowed) {
     if (key in body) update[key] = body[key]

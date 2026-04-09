@@ -98,6 +98,33 @@ export async function generateRecommendations(
     `• "${w.title}" — category: ${w.category || 'unknown'}, colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'unknown'}${w.price ? `, price: $${w.price}` : ''}`
   ).join('\n')
 
+  // Pre-compute wardrobe gap analysis in JS (more reliable than letting Gemini infer it)
+  const ALL_CATEGORIES = ['tops', 'bottoms', 'outerwear', 'shoes', 'dresses', 'accessories', 'bags', 'activewear']
+  const catCounts = wardrobe.reduce<Record<string, number>>((acc, w) => {
+    acc[w.category] = (acc[w.category] || 0) + 1
+    return acc
+  }, {})
+  const presentCats = Object.entries(catCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, n]) => `${cat} (${n})`)
+    .join(', ')
+  const missingCats = ALL_CATEGORIES.filter(c => !catCounts[c])
+  const thinCats = ALL_CATEGORIES.filter(c => catCounts[c] === 1)
+
+  // Dominant colors and styles
+  const colorFreq = wardrobe.flatMap(w => w.colors).reduce<Record<string, number>>((a, c) => { a[c] = (a[c] || 0) + 1; return a }, {})
+  const styleFreq = wardrobe.flatMap(w => w.style_tags).reduce<Record<string, number>>((a, s) => { a[s] = (a[s] || 0) + 1; return a }, {})
+  const topColors = Object.entries(colorFreq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c]) => c)
+  const topStyles = Object.entries(styleFreq).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([s]) => s)
+
+  const gapAnalysis = wardrobe.length > 0 ? `
+WARDROBE ANALYSIS (pre-computed):
+- Categories present: ${presentCats || 'none'}
+- Missing entirely: ${missingCats.length ? missingCats.join(', ') : 'none'}
+- Under-represented (1 item): ${thinCats.length ? thinCats.join(', ') : 'none'}
+- Dominant wardrobe colors: ${topColors.join(', ') || 'unknown'}
+- Dominant wardrobe styles: ${topStyles.join(', ') || 'unknown'}` : ''
+
   // Budget: prefer profile values, fall back to passed-in budget
   const effectiveBudgetMin = profile?.budget_min ?? budget?.min
   const effectiveBudgetMax = profile?.budget_max ?? budget?.max
@@ -126,11 +153,12 @@ export async function generateRecommendations(
     .filter(Boolean)
     .join('\n')
 
-  const prompt = `You are Anticipa — a sharp, opinionated personal stylist AI. Your job is to give precise, actionable shopping recommendations based on real wardrobe gaps and desire signals. Do not be generic.
+  const prompt = `You are Anticipa — a sharp, opinionated personal stylist AI. Your job: precise, actionable shopping picks grounded in real wardrobe gaps and desire signals. No generic output.
 
 ---
 USER PROFILE:
 ${profileSection}
+${gapAnalysis}
 
 WARDROBE (${wardrobe.length} items):
 ${wardrobeSummary || '(empty — rely on wishlist signals)'}
@@ -140,46 +168,46 @@ ${wishlistSummary || '(none — rely on wardrobe gaps)'}
 ---
 
 YOUR PROCESS:
-1. STYLE FINGERPRINT — What is this person's dominant aesthetic? (e.g. "minimalist earth tones with occasional streetwear") What color palette recurs? What silhouettes do they gravitate toward? Cross-reference with their stated style preferences.
-2. GAP AUDIT — Which categories are empty or thin? What capsule staples are clearly missing? What would make the wardrobe more versatile?
-3. DESIRE SIGNALS — From the wishlist, what categories, aesthetics, and price points is this person actively seeking?
-4. CROSSMATCH — For each recommendation, identify which 1-2 existing wardrobe items it pairs with. A pick that pairs with nothing is useless.
+1. STYLE FINGERPRINT — From the wardrobe's dominant colors (${topColors.join(', ') || 'unknown'}) and styles (${topStyles.join(', ') || 'unknown'}), what is the person's core aesthetic? Cross-reference with their profile preferences.
+2. GAP AUDIT — Use the pre-computed gap analysis above. Missing categories are the highest-urgency gaps. Thin categories (1 item) are secondary.
+3. DESIRE SIGNALS — From the wishlist, what price points, silhouettes, and aesthetics is this person actively seeking?
+4. CROSSMATCH — For each pick, name 1-2 specific wardrobe items it pairs with (use item numbers). A pick that pairs with nothing scores below 60.
 
 RULES:
-- Be specific: "Wide-leg ivory linen trousers" not "nice pants"
-- Each pick must either fill a gap OR directly answer a wishlist desire — state which
-- Name the wardrobe items it pairs with (use item numbers from the list)
-- If wardrobe is empty, lean entirely on wishlist signals to infer style
-- If both are empty, recommend foundational capsule wardrobe pieces
-- Respect the budget — do not recommend items likely outside the stated range
+- Be specific: "Oversized black wool overcoat" not "a coat"
+- Each pick must fill a gap OR answer a wishlist desire — never both vaguely
+- Missing categories take priority — at least 4 of your 6 picks must address missing/thin categories
+- Picks must span at least 4 different categories — don't recommend 3 tops
+- Name specific wardrobe item numbers in every reason field
+- Respect the budget hard — never recommend items likely above the stated max
+- If wardrobe is empty: infer style from wishlist; if both empty: pick capsule wardrobe foundations
 
-SCORING GUIDE (be honest — spread scores, don't cluster everything at 80+):
-- 90-100: fills a critical gap AND matches 3+ wishlist signals AND pairs with 2+ wardrobe items
-- 70-89: fills a real gap OR matches wishlist signals, pairs with 1-2 wardrobe items
-- 50-69: nice-to-have, loosely matches style but no urgent gap
-- Below 50: only if you must pad to 6 items
+SCORING (be honest — use the full range, don't cluster at 80):
+- 90-100: missing category + wishlist match + pairs with 2+ items
+- 75-89: missing/thin category OR wishlist match + pairs with 1-2 items
+- 55-74: nice complement, good style match, pairs with at least 1 item
+- Below 55: only if padding to reach 6 picks
 
-SEARCH QUERY RULES (critical — this query is sent directly to Google Shopping):
-- Include: color + material + silhouette + product type + gender
-- Keep under 8 words
-- No adjectives like "beautiful", "stylish", "perfect"
-- Good example: "wide leg ivory linen trousers women high waist"
-- Bad example: "stylish trousers for women who love minimalism"
+SEARCH QUERY (sent directly to Google Shopping — this is critical):
+- Format: [color] [material] [silhouette/cut] [product type] [gender]
+- 4-7 words maximum, no filler adjectives
+- Good: "oversized black wool overcoat women" / "slim navy chino trousers men"
+- Bad: "stylish coat for minimalist woman"
 
 Return a JSON array of exactly 6 objects, sorted by score descending:
 {
-  "title": specific product name with color/material/cut where relevant,
-  "description": one sentence on what makes this piece worth buying,
-  "reason": which gap or desire this addresses + "pairs with [item X] and [item Y] from your wardrobe",
-  "outfits_unlocked": realistic integer — how many new outfit combos with existing wardrobe,
+  "title": specific name — color, material, cut (e.g. "Oversized Black Wool Overcoat"),
+  "description": one sharp sentence on why this piece is worth buying now,
+  "reason": gap/desire addressed + "pairs with item [N] and item [M]",
+  "outfits_unlocked": realistic integer (how many new complete outfits with existing wardrobe),
   "category": one of [tops, bottoms, dresses, outerwear, shoes, accessories, bags, activewear, swimwear, other],
-  "style_tags": 2-3 specific style descriptors,
-  "colors": 2-3 recommended colors as lowercase strings,
-  "search_query": precise Google Shopping query, 4-8 words, color + material + type + gender,
-  "score": 0-100 integer — be honest, spread across the range
+  "style_tags": 2-3 specific descriptors,
+  "colors": 1-3 recommended colors as lowercase strings,
+  "search_query": 4-7 word Google Shopping query,
+  "score": 0-100 integer
 }
 
-Return only a valid JSON array. No markdown, no explanation, no preamble.`
+Return only valid JSON. No markdown, no explanation, no preamble.`
 
   const result = await withRetry(() => model.generateContent(prompt))
   const recs = parseJSON<GeminiRecommendation[]>(result.response.text())

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import type { StyleProfile } from '@/types'
@@ -47,6 +48,7 @@ interface Props {
 export default function StyleProfilePanel({ initial }: Props) {
   const [gender, setGender] = useState(initial?.gender ?? 'unisex')
   const [budgetMin, setBudgetMin] = useState(initial?.budget_min?.toString() ?? '')
+  const [username, setUsername] = useState(initial?.username ?? '')
   const [budgetMax, setBudgetMax] = useState(initial?.budget_max?.toString() ?? '')
   const [styles, setStyles] = useState<string[]>(initial?.dominant_styles ?? [])
   const [colors, setColors] = useState<string[]>(initial?.color_palette ?? [])
@@ -64,6 +66,7 @@ export default function StyleProfilePanel({ initial }: Props) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          username: username.trim() || null,
           gender,
           budget_min: budgetMin ? parseInt(budgetMin) : null,
           budget_max: budgetMax ? parseInt(budgetMax) : null,
@@ -86,6 +89,19 @@ export default function StyleProfilePanel({ initial }: Props) {
 
   return (
     <div className="space-y-8 max-w-xl">
+      {/* Username */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-stone-700">Your name</Label>
+        <Input
+          placeholder="e.g. Alex"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          maxLength={40}
+          className="max-w-xs"
+        />
+        <p className="text-xs text-stone-400">Shown on your dashboard greeting.</p>
+      </div>
+
       {/* Gender */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-stone-700">Shopping for</Label>
