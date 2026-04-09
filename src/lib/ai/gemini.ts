@@ -19,7 +19,7 @@ const FALLBACK_ANALYSIS: GeminiWardrobeAnalysis = {
 }
 
 export async function analyseWardrobeImage(imageBase64: string, mimeType: string): Promise<GeminiWardrobeAnalysis> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
   const prompt = `Analyse this clothing item image and return a JSON object with exactly these fields:
 {
@@ -44,7 +44,7 @@ Return only valid JSON, no markdown.`
 }
 
 export async function analyseWardrobeText(description: string): Promise<GeminiWardrobeAnalysis> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
   const prompt = `Based on this clothing description: "${description}"
 Return a JSON object with exactly these fields:
@@ -71,7 +71,7 @@ export async function generateRecommendations(
   wishlist: WishlistItem[],
   budget?: { min?: number; max?: number }
 ): Promise<GeminiRecommendation[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
   const wardrobeSummary = wardrobe.map(w =>
     `${w.category} (${w.subcategory || 'general'}): colors [${w.colors.join(', ')}], styles [${w.style_tags.join(', ')}]`
