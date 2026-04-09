@@ -173,19 +173,21 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
         {item.image_url ? (
           <Image src={item.image_url} alt={item.description || item.category} fill className="object-cover" />
         ) : (
-          <div
-            className="h-full flex flex-col items-center justify-center gap-2"
-            style={{ background: gradient }}
-          >
-            <span className="text-5xl">{emoji}</span>
-            <span className="text-xs text-stone-500 capitalize font-light px-3 text-center">
+          <div className="h-full flex flex-col items-center justify-center gap-3 px-3" style={{ background: gradient }}>
+            <span className="text-6xl drop-shadow-sm">{emoji}</span>
+            <span className="text-xs text-stone-600 capitalize font-medium text-center leading-snug">
               {item.subcategory || item.category}
             </span>
+            {item.description && item.description !== 'Item added manually' && (
+              <p className="text-[11px] text-stone-500 text-center leading-relaxed line-clamp-3 px-1">
+                {item.description}
+              </p>
+            )}
           </div>
         )}
         {item.brand && (
           <div className="absolute bottom-2 left-2">
-            <span className="text-[10px] bg-white/90 text-stone-600 px-1.5 py-0.5 rounded font-medium">{item.brand}</span>
+            <span className="text-[10px] bg-white/90 text-stone-600 px-1.5 py-0.5 rounded font-medium shadow-sm">{item.brand}</span>
           </div>
         )}
         <button
@@ -195,13 +197,10 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
           <Trash2 className="h-3 w-3 text-stone-600" />
         </button>
       </div>
-      <CardContent className="p-3 space-y-2">
-        <p className="text-xs font-medium text-stone-700 capitalize leading-tight">
+      <CardContent className="p-3 space-y-1.5">
+        <p className="text-xs font-semibold text-stone-700 capitalize leading-tight">
           {item.subcategory || item.category}
         </p>
-        {item.description && !item.image_url && (
-          <p className="text-[10px] text-stone-400 leading-relaxed line-clamp-2">{item.description}</p>
-        )}
         <div className="flex items-center gap-1.5">
           {item.colors.slice(0, 4).map(c => (
             <span

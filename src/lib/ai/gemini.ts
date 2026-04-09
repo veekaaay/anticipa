@@ -73,45 +73,55 @@ export async function generateRecommendations(
 ): Promise<GeminiRecommendation[]> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-  const wardrobeSummary = wardrobe.map(w =>
-    `${w.category} (${w.subcategory || 'general'}): colors [${w.colors.join(', ')}], styles [${w.style_tags.join(', ')}]`
+  const wardrobeSummary = wardrobe.map((w, i) =>
+    `[${i + 1}] ${w.subcategory || w.category} — colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'untagged'}${w.brand ? `, brand: ${w.brand}` : ''}${w.description ? `, desc: ${w.description}` : ''}`
   ).join('\n')
 
   const wishlistSummary = wishlist.map(w =>
-    `${w.title}: category ${w.category || 'unknown'}, colors [${w.colors.join(', ')}], styles [${w.style_tags.join(', ')}]${w.price ? `, ~$${w.price}` : ''}`
+    `• "${w.title}" — category: ${w.category || 'unknown'}, colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'unknown'}${w.price ? `, price: $${w.price}` : ''}`
   ).join('\n')
 
-  const budgetStr = budget?.max ? `Budget: $${budget.min || 0}–$${budget.max}` : 'No specific budget'
+  const budgetStr = budget?.max ? `Budget constraint: $${budget.min || 0}–$${budget.max}` : 'No budget constraint'
 
-  const prompt = `You are a personal stylist AI for a platform called Anticipa.
+  const prompt = `You are Anticipa — a sharp, opinionated personal stylist AI. Your job is to give precise, actionable shopping recommendations based on real wardrobe gaps and desire signals. Do not be generic.
 
+---
 WARDROBE (${wardrobe.length} items):
-${wardrobeSummary || 'Empty wardrobe'}
+${wardrobeSummary || '(empty — rely on wishlist signals)'}
 
-WISHLIST (${wishlist.length} items):
-${wishlistSummary || 'No wishlist items'}
+WISHLIST DESIRES (${wishlist.length} items):
+${wishlistSummary || '(none — rely on wardrobe gaps)'}
 
 ${budgetStr}
+---
 
-Analyse the wardrobe for gaps, identify the user's style from both wardrobe and wishlist, then generate exactly 6 curated shopping recommendations that:
-1. Fill actual gaps in the wardrobe
-2. Align with the user's proven style preferences from the wishlist
-3. Maximise outfit combinations with existing items
+YOUR PROCESS:
+1. STYLE FINGERPRINT — What is this person's dominant aesthetic? (e.g. "minimalist earth tones with occasional streetwear") What color palette recurs? What silhouettes do they gravitate toward?
+2. GAP AUDIT — Which categories are empty or thin? What capsule staples are clearly missing? What would make the wardrobe more versatile?
+3. DESIRE SIGNALS — From the wishlist, what categories, aesthetics, and price points is this person actively seeking?
+4. CROSSMATCH — For each recommendation, identify which 1-2 existing wardrobe items it pairs with. A pick that pairs with nothing is useless.
 
-Return a JSON array of 6 objects, each with:
+RULES:
+- Be specific: "Wide-leg ivory linen trousers" not "nice pants"
+- Each pick must either fill a gap OR directly answer a wishlist desire — state which
+- Name the wardrobe items it pairs with (use item numbers from the list)
+- If wardrobe is empty, lean entirely on wishlist signals to infer style
+- If both are empty, recommend foundational capsule wardrobe pieces
+
+Return a JSON array of exactly 6 objects, sorted by score descending:
 {
-  "title": short product name,
-  "description": 1-2 sentence product description,
-  "reason": specific reason this fills a gap or matches their style (mention specific wardrobe items it pairs with),
-  "outfits_unlocked": estimated number of new outfit combinations this unlocks with existing wardrobe,
-  "category": product category,
-  "style_tags": array of style tags,
-  "colors": array of recommended colors for this item,
-  "search_query": specific Google Shopping search query to find this item (e.g. "white linen button-down shirt women"),
-  "score": relevance score 0-100
+  "title": specific product name with color/material/cut where relevant,
+  "description": one sentence on what makes this piece worth buying,
+  "reason": which gap or desire this addresses + "pairs with [item X] and [item Y] from your wardrobe",
+  "outfits_unlocked": realistic integer — how many new outfit combos with existing wardrobe,
+  "category": one of [tops, bottoms, dresses, outerwear, shoes, accessories, bags, activewear, swimwear, other],
+  "style_tags": 2-3 specific style descriptors,
+  "colors": 2-3 recommended colors as lowercase strings,
+  "search_query": precise Google Shopping query — include color, material, silhouette, and gender where relevant (e.g. "wide leg ivory linen trousers women high waist"),
+  "score": 0-100 (gap urgency 40% + style match 40% + outfit versatility 20%)
 }
 
-Sort by score descending. Return only valid JSON array, no markdown.`
+Return only a valid JSON array. No markdown, no explanation, no preamble.`
 
   const result = await model.generateContent(prompt)
   const recs = parseJSON<GeminiRecommendation[]>(result.response.text())

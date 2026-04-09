@@ -96,7 +96,7 @@ export default function RecommendationsPanel({
       )}
 
       {!loading && recs.length > 0 && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {recs.map((rec, i) => (
             <RecommendationCard key={rec.id} rec={rec} rank={i + 1} />
           ))}
@@ -113,86 +113,77 @@ function RecommendationCard({ rec, rank }: { rec: Recommendation; rank: number }
   const label = shopLabel(rec)
 
   return (
-    <Card className="border-stone-200 shadow-none overflow-hidden group">
-      <div className="flex">
-        {/* Visual block */}
-        <div className="relative w-32 sm:w-40 flex-shrink-0" style={{ background: gradient }}>
-          {rec.image_url ? (
-            <div className="relative h-full w-full min-h-[10rem]">
-              <Image src={rec.image_url} alt={rec.title} fill className="object-cover" />
+    <Card className="border-stone-200 shadow-none overflow-hidden flex flex-col">
+      {/* Image / placeholder — tall and impactful */}
+      <div className="relative h-52 flex-shrink-0" style={{ background: gradient }}>
+        {rec.image_url ? (
+          <Image src={rec.image_url} alt={rec.title} fill className="object-cover" />
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center gap-3">
+            <span className="text-7xl drop-shadow-sm">{emoji}</span>
+            <div className="flex gap-1.5">
+              {rec.colors.slice(0, 4).map(c => (
+                <span
+                  key={c}
+                  title={c}
+                  className="h-3.5 w-3.5 rounded-full border-2 border-white/70 shadow-sm"
+                  style={{ backgroundColor: resolveColor(c) }}
+                />
+              ))}
             </div>
-          ) : (
-            <div className="h-full min-h-[10rem] flex flex-col items-center justify-center gap-2 p-3">
-              <span className="text-4xl">{emoji}</span>
-              <div className="flex gap-1 flex-wrap justify-center">
-                {rec.colors.slice(0, 3).map(c => (
-                  <span
-                    key={c}
-                    title={c}
-                    className="inline-block h-3 w-3 rounded-full border border-white/60"
-                    style={{ backgroundColor: resolveColor(c) }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Rank pill */}
-          <div className="absolute top-2 left-2 h-5 w-5 rounded-full bg-stone-900/60 text-white text-[10px] font-semibold flex items-center justify-center">
-            {rank}
           </div>
+        )}
+        {/* Rank + score overlay */}
+        <div className="absolute top-3 left-3 h-6 w-6 rounded-full bg-stone-900/70 text-white text-[11px] font-semibold flex items-center justify-center shadow">
+          {rank}
+        </div>
+        <div className="absolute top-3 right-3 bg-white/90 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full shadow">
+          {rec.score}% match
+        </div>
+        {/* Category label at bottom */}
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/30 to-transparent px-3 py-2">
+          <p className="text-[11px] text-white/80 capitalize">{rec.category}</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <CardContent className="p-4 flex flex-col gap-3 flex-1">
+        <p className="font-semibold text-stone-800 text-sm leading-snug">{rec.title}</p>
+
+        {rec.description && (
+          <p className="text-[11px] text-stone-400 leading-relaxed">{rec.description}</p>
+        )}
+
+        <div className="bg-stone-50 rounded-md px-3 py-2 text-xs text-stone-600 leading-relaxed">
+          <span className="font-medium text-stone-700">Why: </span>{rec.reason}
         </div>
 
-        {/* Content */}
-        <CardContent className="p-4 flex flex-col gap-2.5 flex-1 min-w-0">
-          {/* Title row */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="font-semibold text-stone-800 text-sm leading-snug">{rec.title}</p>
-              <p className="text-[11px] text-stone-400 capitalize mt-0.5">{rec.category}</p>
-            </div>
-            <span className="shrink-0 text-[11px] font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-              {rec.score}% match
-            </span>
+        {rec.outfits_unlocked > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
+            <Shirt className="h-3 w-3" />
+            Unlocks {rec.outfits_unlocked} outfit{rec.outfits_unlocked !== 1 ? 's' : ''}
           </div>
+        )}
 
-          {/* Description */}
-          {rec.description && (
-            <p className="text-[11px] text-stone-500 leading-relaxed line-clamp-1">{rec.description}</p>
+        <div className="flex flex-wrap gap-1">
+          {rec.style_tags.slice(0, 3).map(t => (
+            <Badge key={t} variant="outline" className="text-[10px] py-0 px-1.5 capitalize border-stone-200 text-stone-400">{t}</Badge>
+          ))}
+        </div>
+
+        <div className="mt-auto pt-1 flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+            className="flex-1 gap-1.5 text-xs bg-stone-800 hover:bg-stone-900 h-8"
+          >
+            {label} <ExternalLink className="h-3 w-3" />
+          </Button>
+          {rec.deal_source && (
+            <span className="text-[10px] text-stone-400 shrink-0">via {rec.deal_source}</span>
           )}
-
-          {/* Why */}
-          <p className="text-xs text-stone-600 leading-relaxed line-clamp-2 bg-stone-50 rounded-md px-2.5 py-2">
-            <span className="font-medium text-stone-700">Why: </span>{rec.reason}
-          </p>
-
-          {/* Meta */}
-          <div className="flex items-center gap-3 text-[11px] text-stone-400 flex-wrap">
-            {rec.outfits_unlocked > 0 && (
-              <span className="flex items-center gap-1">
-                <Shirt className="h-3 w-3" />
-                +{rec.outfits_unlocked} outfit{rec.outfits_unlocked !== 1 ? 's' : ''}
-              </span>
-            )}
-            {rec.style_tags.slice(0, 2).map(t => (
-              <Badge key={t} variant="outline" className="text-[10px] py-0 px-1.5 capitalize border-stone-200 text-stone-400">{t}</Badge>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <div className="mt-auto pt-0.5 flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-              className="flex-1 gap-1.5 text-xs bg-stone-800 hover:bg-stone-900 h-8"
-            >
-              {label} <ExternalLink className="h-3 w-3" />
-            </Button>
-            {rec.deal_source && (
-              <span className="text-[10px] text-stone-400 shrink-0">via {rec.deal_source}</span>
-            )}
-          </div>
-        </CardContent>
-      </div>
+        </div>
+      </CardContent>
     </Card>
   )
 }

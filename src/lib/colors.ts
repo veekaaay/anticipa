@@ -24,6 +24,6 @@ export function resolveColor(name: string): string {
 export function itemGradient(colors: string[]): string {
   const mapped = colors.slice(0, 2).map(c => resolveColor(c))
   if (!mapped.length) return 'linear-gradient(145deg, #f5f5f4 0%, #e7e5e4 100%)'
-  if (mapped.length === 1) return `linear-gradient(145deg, ${mapped[0]}18 0%, ${mapped[0]}38 100%)`
-  return `linear-gradient(145deg, ${mapped[0]}22 0%, ${mapped[1]}28 100%)`
+  if (mapped.length === 1) return `linear-gradient(145deg, ${mapped[0]}30 0%, ${mapped[0]}60 100%)`
+  return `linear-gradient(145deg, ${mapped[0]}38 0%, ${mapped[1]}48 100%)`
 }
