@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { Sparkles, Shirt, Heart } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
 import RecommendationsPanel from '@/components/recommendations/RecommendationsPanel'
 import WardrobePanel from '@/components/wardrobe/WardrobePanel'
 import WishlistPanel from '@/components/wishlist/WishlistPanel'
@@ -16,58 +15,68 @@ export default async function DashboardPage() {
     supabase.from('recommendations').select('*').eq('user_id', user!.id).order('score', { ascending: false }),
   ])
 
-  const stats = [
-    { label: 'Wardrobe items', value: wardrobe?.length ?? 0, icon: Shirt },
-    { label: 'Wishlist items', value: wishlist?.length ?? 0, icon: Heart },
-    { label: 'Picks for you', value: recommendations?.length ?? 0, icon: Sparkles },
-  ]
+  const wardrobeCount = wardrobe?.length ?? 0
+  const wishlistCount = wishlist?.length ?? 0
+  const recCount = recommendations?.length ?? 0
+  const handle = user!.email!.split('@')[0]
+
+  // Nudge copy based on what's missing
+  const nudge = wardrobeCount === 0
+    ? 'Start by adding a few wardrobe items so Anticipa can learn your style.'
+    : wishlistCount === 0
+    ? 'Import a Pinterest board or wishlist URL to improve your picks.'
+    : recCount === 0
+    ? 'Hit "Generate picks" in the Picks tab to get your first curated shopping list.'
+    : null
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-light tracking-wide text-stone-800">Your Style Dashboard</h1>
-        <p className="text-stone-500 mt-1 text-sm">Anticipa learns your style and finds what you&apos;ll love next.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <p className="text-xs text-stone-400 uppercase tracking-widest mb-1">Your style profile</p>
+          <h1 className="text-2xl font-light text-stone-800">Hey, {handle} 👋</h1>
+          {nudge && <p className="text-sm text-stone-500 mt-1">{nudge}</p>}
+        </div>
+        <div className="flex gap-5 text-center">
+          {[
+            { label: 'Wardrobe', value: wardrobeCount },
+            { label: 'Wishlist', value: wishlistCount },
+            { label: 'Picks', value: recCount },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p className="text-2xl font-light text-stone-800">{value}</p>
+              <p className="text-[11px] text-stone-400">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <Card key={label} className="border-stone-200 shadow-none">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-stone-100 flex items-center justify-center">
-                  <Icon className="h-4 w-4 text-stone-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-light text-stone-800">{value}</p>
-                  <p className="text-xs text-stone-500">{label}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Divider */}
+      <div className="border-t border-stone-200" />
 
       {/* Main Tabs */}
       <Tabs defaultValue="recommendations" className="space-y-6">
         <TabsList className="bg-stone-100 border border-stone-200">
-          <TabsTrigger value="recommendations" className="gap-2">
-            <Sparkles className="h-3.5 w-3.5" /> Picks for You
+          <TabsTrigger value="recommendations" className="gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" /> Picks
+            {recCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({recCount})</span>}
           </TabsTrigger>
-          <TabsTrigger value="wardrobe" className="gap-2">
+          <TabsTrigger value="wardrobe" className="gap-1.5">
             <Shirt className="h-3.5 w-3.5" /> Wardrobe
+            {wardrobeCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({wardrobeCount})</span>}
           </TabsTrigger>
-          <TabsTrigger value="wishlist" className="gap-2">
+          <TabsTrigger value="wishlist" className="gap-1.5">
             <Heart className="h-3.5 w-3.5" /> Wishlist
+            {wishlistCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({wishlistCount})</span>}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="recommendations">
           <RecommendationsPanel
             initial={recommendations ?? []}
-            wardrobeCount={wardrobe?.length ?? 0}
-            wishlistCount={wishlist?.length ?? 0}
+            wardrobeCount={wardrobeCount}
+            wishlistCount={wishlistCount}
           />
         </TabsContent>
         <TabsContent value="wardrobe">

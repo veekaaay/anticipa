@@ -71,6 +71,7 @@ export async function POST() {
         deal_price: deal?.price ?? null,
         deal_source: deal?.source ?? null,
         score: rec.score,
+        search_query: rec.search_query ?? null,
       }
     })
   )

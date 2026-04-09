@@ -52,6 +52,7 @@ export interface Recommendation {
   deal_price: number | null
   deal_source: string | null
   score: number           // 0-100
+  search_query: string | null
   created_at: string
 }
 

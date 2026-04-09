@@ -5,28 +5,18 @@ import { Plus, Upload, Type, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-
-const COLOR_MAP: Record<string, string> = {
-  black: '#1c1917', white: '#fafaf9', grey: '#a8a29e', gray: '#a8a29e',
-  navy: '#1e3a5f', blue: '#3b82f6', red: '#ef4444', pink: '#f472b6',
-  green: '#22c55e', olive: '#6b7c45', brown: '#92400e', tan: '#c8a882',
-  beige: '#e8dcc8', cream: '#fdf8f0', camel: '#c19a6b', khaki: '#c3b091',
-  yellow: '#eab308', orange: '#f97316', purple: '#a855f7', burgundy: '#800020',
-}
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  tops: '👕', bottoms: '👖', dresses: '👗', outerwear: '🧥',
-  shoes: '👟', accessories: '💍', bags: '👜', activewear: '🏃',
-  swimwear: '🩱', other: '👔',
-}
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import type { WardrobeItem } from '@/types'
+import { resolveColor, itemGradient, CATEGORY_EMOJI } from '@/lib/colors'
+
+const CATEGORIES = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'bags', 'activewear', 'other']
 
 export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) {
   const [items, setItems] = useState(initial)
+  const [filter, setFilter] = useState('all')
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'photo' | 'text'>('photo')
   const [loading, setLoading] = useState(false)
@@ -34,6 +24,8 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const visible = filter === 'all' ? items : items.filter(i => i.category === filter)
 
   function handleFile(f: File) {
     setFile(f)
@@ -69,9 +61,10 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-stone-500">{items.length} items in your wardrobe</p>
+        <p className="text-sm text-stone-500">{items.length} item{items.length !== 1 ? 's' : ''} in your wardrobe</p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger className="inline-flex items-center justify-center gap-1.5 rounded-md bg-stone-800 hover:bg-stone-900 text-white text-sm px-3 h-8 font-medium transition-colors">
             <Plus className="h-3.5 w-3.5" /> Add Item
@@ -81,7 +74,6 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
               <DialogTitle className="font-light">Add to wardrobe</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {/* Mode toggle */}
               <div className="flex gap-2">
                 <Button variant={mode === 'photo' ? 'default' : 'outline'} size="sm" onClick={() => setMode('photo')} className={mode === 'photo' ? 'bg-stone-800' : ''}>
                   <Upload className="h-3.5 w-3.5 mr-1.5" /> Photo
@@ -120,6 +112,7 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
                     onChange={e => setDescription(e.target.value)}
                     rows={3}
                   />
+                  <p className="text-xs text-stone-400">Be specific — color, fabric, fit, and style help Anticipa match it accurately.</p>
                 </div>
               )}
 
@@ -131,11 +124,37 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
         </Dialog>
       </div>
 
+      {/* Category filter */}
+      {items.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {CATEGORIES.filter(c => c === 'all' || items.some(i => i.category === c)).map(cat => (
+            <button
+              key={cat}
+              onClick={() => setFilter(cat)}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                filter === cat
+                  ? 'bg-stone-800 text-white'
+                  : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+              }`}
+            >
+              {cat === 'all' ? 'All' : `${CATEGORY_EMOJI[cat] ?? ''} ${cat.charAt(0).toUpperCase() + cat.slice(1)}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Grid */}
       {items.length === 0 ? (
-        <EmptyState icon="👔" text="Your wardrobe is empty" sub="Add photos or describe your clothes — Anticipa will analyse them automatically." />
+        <div className="text-center py-20 space-y-3">
+          <div className="text-5xl">👔</div>
+          <p className="text-stone-600 font-light">Your wardrobe is empty</p>
+          <p className="text-stone-400 text-sm max-w-xs mx-auto">Add photos or describe your clothes — Anticipa analyses each item automatically.</p>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="text-center py-12 text-stone-400 text-sm">No {filter} items yet.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {items.map(item => (
+          {visible.map(item => (
             <WardrobeCard key={item.id} item={item} onDelete={handleDelete} />
           ))}
         </div>
@@ -145,26 +164,28 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
 }
 
 function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: string) => void }) {
-  const primaryColor = COLOR_MAP[item.colors?.[0]?.toLowerCase() ?? '']
-  const emoji = CATEGORY_EMOJI[item.category?.toLowerCase() ?? ''] ?? '👔'
+  const emoji = CATEGORY_EMOJI[item.category?.toLowerCase() ?? ''] ?? '🛍️'
+  const gradient = itemGradient(item.colors)
 
   return (
     <Card className="group border-stone-200 shadow-none overflow-hidden">
-      <div className="relative aspect-[4/3] bg-stone-100">
+      <div className="relative aspect-[3/4] bg-stone-50">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.description || item.category} fill className="object-cover" />
         ) : (
           <div
             className="h-full flex flex-col items-center justify-center gap-2"
-            style={{ backgroundColor: primaryColor ? primaryColor + '22' : undefined }}
+            style={{ background: gradient }}
           >
-            <span className="text-4xl">{emoji}</span>
-            {primaryColor && (
-              <span
-                className="h-3 w-3 rounded-full border border-white/50"
-                style={{ backgroundColor: primaryColor }}
-              />
-            )}
+            <span className="text-5xl">{emoji}</span>
+            <span className="text-xs text-stone-500 capitalize font-light px-3 text-center">
+              {item.subcategory || item.category}
+            </span>
+          </div>
+        )}
+        {item.brand && (
+          <div className="absolute bottom-2 left-2">
+            <span className="text-[10px] bg-white/90 text-stone-600 px-1.5 py-0.5 rounded font-medium">{item.brand}</span>
           </div>
         )}
         <button
@@ -174,17 +195,20 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
           <Trash2 className="h-3 w-3 text-stone-600" />
         </button>
       </div>
-      <CardContent className="p-3 space-y-1.5">
+      <CardContent className="p-3 space-y-2">
         <p className="text-xs font-medium text-stone-700 capitalize leading-tight">
           {item.subcategory || item.category}
         </p>
-        <div className="flex items-center flex-wrap gap-1">
-          {item.colors.slice(0, 3).map(c => (
+        {item.description && !item.image_url && (
+          <p className="text-[10px] text-stone-400 leading-relaxed line-clamp-2">{item.description}</p>
+        )}
+        <div className="flex items-center gap-1.5">
+          {item.colors.slice(0, 4).map(c => (
             <span
               key={c}
               title={c}
-              className="inline-block h-3 w-3 rounded-full border border-stone-200"
-              style={{ backgroundColor: COLOR_MAP[c.toLowerCase()] ?? '#d6d3d1' }}
+              className="inline-block h-3 w-3 rounded-full border border-stone-200 shrink-0"
+              style={{ backgroundColor: resolveColor(c) }}
             />
           ))}
           {item.style_tags.slice(0, 1).map(t => (
@@ -193,15 +217,5 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function EmptyState({ icon, text, sub }: { icon: string; text: string; sub: string }) {
-  return (
-    <div className="text-center py-16 space-y-3">
-      <div className="text-5xl">{icon}</div>
-      <p className="text-stone-600 font-light">{text}</p>
-      <p className="text-stone-400 text-sm max-w-xs mx-auto">{sub}</p>
-    </div>
   )
 }
