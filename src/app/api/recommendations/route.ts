@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateRecommendations } from '@/lib/ai/gemini'
 import { findDeals } from '@/lib/deals'
+import { fetchFashionImage } from '@/lib/images'
 
 export async function GET() {
   const supabase = await createClient()
@@ -56,7 +57,10 @@ export async function POST() {
   // Find real deals for each recommendation in parallel
   const withDeals = await Promise.all(
     aiRecs.map(async (rec) => {
-      const deal = await findDeals(rec.search_query, profile?.budget_max ?? undefined)
+      const [deal, pexelsImage] = await Promise.all([
+        findDeals(rec.search_query, profile?.budget_max ?? undefined),
+        fetchFashionImage(rec.search_query),
+      ])
       return {
         user_id: user.id,
         title: rec.title,
@@ -66,7 +70,8 @@ export async function POST() {
         category: rec.category,
         style_tags: rec.style_tags,
         colors: rec.colors,
-        image_url: deal?.image_url ?? null,
+        // Prefer SerpAPI deal image, fall back to Pexels fashion photo
+        image_url: deal?.image_url ?? pexelsImage ?? null,
         deal_url: deal?.url ?? null,
         deal_price: deal?.price ?? null,
         deal_source: deal?.source ?? null,
