@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Anticipa
 
-## Getting Started
+> Shop smarter. Wear better.
 
-First, run the development server:
+AI-powered personal stylist that learns your wardrobe and wishlist, then curates exactly what to buy next — with real deals attached.
 
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Styling | Tailwind CSS + shadcn/ui |
+| Auth + DB + Storage | Supabase |
+| AI | Google Gemini 2.0 Flash (free) |
+| Deals | SerpAPI — Google Shopping |
+| Wishlist import | Cheerio scraper |
+| Hosting | Vercel |
+
+## Setup
+
+### 1. Clone and install
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/veekaaay/anticipa.git
+cd anticipa
+npm install
+cp .env.example .env.local   # then fill in your keys
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Keys needed
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Where |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | supabase.com → project → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page |
+| `GEMINI_API_KEY` | aistudio.google.com (free) |
+| `SERPAPI_KEY` | serpapi.com (100 free/month, optional) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Supabase schema
+Run `src/lib/supabase/schema.sql` in your Supabase SQL Editor.
 
-## Learn More
+### 4. Run
+```bash
+npm run dev        # local
+vercel deploy      # production
+```
 
-To learn more about Next.js, take a look at the following resources:
+## How it works
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Upload wardrobe photos or describe clothes → Gemini extracts style data
+2. Paste a Pinterest board or Amazon wishlist URL → scraped and enriched
+3. Hit "Generate picks" → Gemini analyses gaps, cross-refs wishlist, returns 6 ranked picks with reasons + real deal links via SerpAPI
