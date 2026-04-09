@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Plus, Upload, Type, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,11 @@ import { resolveColor, itemGradient, CATEGORY_EMOJI } from '@/lib/colors'
 const CATEGORIES = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'bags', 'activewear', 'other']
 
 export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) {
+  const router = useRouter()
   const [items, setItems] = useState(initial)
+
+  // Sync if server re-renders with fresh data (e.g. after router.refresh())
+  useEffect(() => { setItems(initial) }, [initial])
   const [filter, setFilter] = useState('all')
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'photo' | 'text'>('photo')
@@ -66,6 +71,7 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
       toast.success('Item added to wardrobe')
       setOpen(false)
       setFile(null); setPreview(null); setDescription('')
+      router.refresh()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to add item')
     } finally {
@@ -75,7 +81,7 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
 
   async function handleDelete(id: string) {
     const res = await fetch('/api/wardrobe', { method: 'DELETE', body: JSON.stringify({ id }), headers: { 'Content-Type': 'application/json' } })
-    if (res.ok) setItems(prev => prev.filter(i => i.id !== id))
+    if (res.ok) { setItems(prev => prev.filter(i => i.id !== id)); router.refresh() }
     else toast.error('Failed to remove item')
   }
 

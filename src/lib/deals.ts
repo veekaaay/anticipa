@@ -39,20 +39,26 @@ export async function findDeals(searchQuery: string, budgetMax?: number): Promis
 
     if (!results?.length) return null
 
-    // Pick the best value result (lowest price with decent rating)
-    const scored = results
+    // Pick the best value result: quality-weighted, price-relative to budget
+    const priced = results
       .filter(r => r.price && r.link && /^https?:\/\//.test(r.link))
-      .map(r => {
-        const price = parseFloat(r.price.replace(/[^0-9.]/g, ''))
-        const rating = r.rating || 3
-        // Normalise price score: clamp to 0-1 range regardless of price
-        const priceScore = Math.max(0, 1 - price / 1000)
-        return { ...r, numPrice: price, score: (rating / 5) * 0.4 + priceScore * 0.6 }
-      })
+      .map(r => ({ ...r, numPrice: parseFloat(r.price.replace(/[^0-9.]/g, '')) }))
       .filter(r => !isNaN(r.numPrice) && r.numPrice > 0)
+
+    if (!priced.length) return null
+
+    const maxPrice = budgetMax ?? Math.max(...priced.map(r => r.numPrice), 500)
+    const scored = priced
+      .map(r => {
+        // Price score: 1.0 at $0, 0.0 at budget/ceiling — relative not absolute
+        const priceScore = Math.max(0, 1 - r.numPrice / maxPrice)
+        // Rating score: use 0.65 default for unrated (benefit of the doubt)
+        const ratingScore = r.rating ? r.rating / 5 : 0.65
+        // Weight: quality matters more than just being cheap
+        return { ...r, score: ratingScore * 0.55 + priceScore * 0.45 }
+      })
       .sort((a, b) => b.score - a.score)
 
-    if (!scored.length) return null
     const best = scored[0]
 
     return {

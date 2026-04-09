@@ -1,18 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
-import { Sparkles, Shirt, Heart } from 'lucide-react'
+import { Sparkles, Shirt, Heart, User } from 'lucide-react'
 import RecommendationsPanel from '@/components/recommendations/RecommendationsPanel'
 import WardrobePanel from '@/components/wardrobe/WardrobePanel'
 import WishlistPanel from '@/components/wishlist/WishlistPanel'
+import StyleProfilePanel from '@/components/profile/StyleProfilePanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { StyleProfile } from '@/types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: wardrobe }, { data: wishlist }, { data: recommendations }] = await Promise.all([
+  const [{ data: wardrobe }, { data: wishlist }, { data: recommendations }, { data: profile }] = await Promise.all([
     supabase.from('wardrobe_items').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }),
     supabase.from('wishlist_items').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }),
     supabase.from('recommendations').select('*').eq('user_id', user!.id).order('score', { ascending: false }),
+    supabase.from('style_profiles').select('*').eq('user_id', user!.id).maybeSingle(),
   ])
 
   const wardrobeCount = wardrobe?.length ?? 0
@@ -70,20 +73,26 @@ export default async function DashboardPage() {
             <Heart className="h-3.5 w-3.5" /> Wishlist
             {wishlistCount > 0 && <span className="ml-0.5 text-[10px] text-stone-400">({wishlistCount})</span>}
           </TabsTrigger>
+          <TabsTrigger value="profile" className="gap-1.5">
+            <User className="h-3.5 w-3.5" /> My Style
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="recommendations">
+        <TabsContent value="recommendations" keepMounted>
           <RecommendationsPanel
             initial={recommendations ?? []}
             wardrobeCount={wardrobeCount}
             wishlistCount={wishlistCount}
           />
         </TabsContent>
-        <TabsContent value="wardrobe">
+        <TabsContent value="wardrobe" keepMounted>
           <WardrobePanel initial={wardrobe ?? []} />
         </TabsContent>
-        <TabsContent value="wishlist">
+        <TabsContent value="wishlist" keepMounted>
           <WishlistPanel initial={wishlist ?? []} />
+        </TabsContent>
+        <TabsContent value="profile" keepMounted>
+          <StyleProfilePanel initial={profile as StyleProfile | null} />
         </TabsContent>
       </Tabs>
     </div>

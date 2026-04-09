@@ -28,7 +28,7 @@ export async function POST() {
   const [wardrobeRes, wishlistRes, profileRes] = await Promise.all([
     supabase.from('wardrobe_items').select('*').eq('user_id', user.id),
     supabase.from('wishlist_items').select('*').eq('user_id', user.id),
-    supabase.from('style_profiles').select('*').eq('user_id', user.id).single(),
+    supabase.from('style_profiles').select('*').eq('user_id', user.id).maybeSingle(),
   ])
 
   const wardrobe = wardrobeRes.data || []
@@ -45,10 +45,7 @@ export async function POST() {
   // Generate AI recommendations
   let aiRecs
   try {
-    aiRecs = await generateRecommendations(wardrobe, wishlist, {
-      min: profile?.budget_min ?? undefined,
-      max: profile?.budget_max ?? undefined,
-    })
+    aiRecs = await generateRecommendations(wardrobe, wishlist, undefined, profile)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'AI generation failed'
     return NextResponse.json({ error: msg }, { status: 502 })

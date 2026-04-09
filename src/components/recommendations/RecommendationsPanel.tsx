@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Sparkles, RefreshCw, Loader2, ExternalLink, Shirt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -30,8 +31,11 @@ export default function RecommendationsPanel({
   wardrobeCount: number
   wishlistCount: number
 }) {
+  const router = useRouter()
   const [recs, setRecs] = useState(initial)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => { setRecs(initial) }, [initial])
 
   const canGenerate = wardrobeCount > 0 || wishlistCount > 0
 
@@ -43,6 +47,7 @@ export default function RecommendationsPanel({
       const data = await res.json()
       setRecs(data)
       toast.success('Your picks have been refreshed')
+      router.refresh()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to generate picks')
     } finally {

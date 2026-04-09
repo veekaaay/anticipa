@@ -29,6 +29,7 @@ export interface WishlistItem {
 export interface StyleProfile {
   id: string
   user_id: string
+  gender: string | null
   dominant_styles: string[]
   color_palette: string[]
   preferred_categories: string[]
