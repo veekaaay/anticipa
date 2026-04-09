@@ -5,6 +5,20 @@ import { Plus, Upload, Type, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+
+const COLOR_MAP: Record<string, string> = {
+  black: '#1c1917', white: '#fafaf9', grey: '#a8a29e', gray: '#a8a29e',
+  navy: '#1e3a5f', blue: '#3b82f6', red: '#ef4444', pink: '#f472b6',
+  green: '#22c55e', olive: '#6b7c45', brown: '#92400e', tan: '#c8a882',
+  beige: '#e8dcc8', cream: '#fdf8f0', camel: '#c19a6b', khaki: '#c3b091',
+  yellow: '#eab308', orange: '#f97316', purple: '#a855f7', burgundy: '#800020',
+}
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  tops: '👕', bottoms: '👖', dresses: '👗', outerwear: '🧥',
+  shoes: '👟', accessories: '💍', bags: '👜', activewear: '🏃',
+  swimwear: '🩱', other: '👔',
+}
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -120,7 +134,7 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
       {items.length === 0 ? (
         <EmptyState icon="👔" text="Your wardrobe is empty" sub="Add photos or describe your clothes — Anticipa will analyse them automatically." />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {items.map(item => (
             <WardrobeCard key={item.id} item={item} onDelete={handleDelete} />
           ))}
@@ -131,13 +145,27 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
 }
 
 function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: string) => void }) {
+  const primaryColor = COLOR_MAP[item.colors?.[0]?.toLowerCase() ?? '']
+  const emoji = CATEGORY_EMOJI[item.category?.toLowerCase() ?? ''] ?? '👔'
+
   return (
     <Card className="group border-stone-200 shadow-none overflow-hidden">
-      <div className="relative aspect-square bg-stone-100">
+      <div className="relative aspect-[4/3] bg-stone-100">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.description || item.category} fill className="object-cover" />
         ) : (
-          <div className="h-full flex items-center justify-center text-4xl">👔</div>
+          <div
+            className="h-full flex flex-col items-center justify-center gap-2"
+            style={{ backgroundColor: primaryColor ? primaryColor + '22' : undefined }}
+          >
+            <span className="text-4xl">{emoji}</span>
+            {primaryColor && (
+              <span
+                className="h-3 w-3 rounded-full border border-white/50"
+                style={{ backgroundColor: primaryColor }}
+              />
+            )}
+          </div>
         )}
         <button
           onClick={() => onDelete(item.id)}
@@ -146,14 +174,21 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
           <Trash2 className="h-3 w-3 text-stone-600" />
         </button>
       </div>
-      <CardContent className="p-2.5 space-y-1.5">
-        <p className="text-xs font-medium text-stone-700 capitalize">{item.subcategory || item.category}</p>
-        <div className="flex flex-wrap gap-1">
-          {item.colors.slice(0, 2).map(c => (
-            <Badge key={c} variant="secondary" className="text-[10px] py-0 px-1.5 bg-stone-100 text-stone-600 capitalize">{c}</Badge>
+      <CardContent className="p-3 space-y-1.5">
+        <p className="text-xs font-medium text-stone-700 capitalize leading-tight">
+          {item.subcategory || item.category}
+        </p>
+        <div className="flex items-center flex-wrap gap-1">
+          {item.colors.slice(0, 3).map(c => (
+            <span
+              key={c}
+              title={c}
+              className="inline-block h-3 w-3 rounded-full border border-stone-200"
+              style={{ backgroundColor: COLOR_MAP[c.toLowerCase()] ?? '#d6d3d1' }}
+            />
           ))}
           {item.style_tags.slice(0, 1).map(t => (
-            <Badge key={t} variant="outline" className="text-[10px] py-0 px-1.5 text-stone-500 capitalize">{t}</Badge>
+            <Badge key={t} variant="outline" className="text-[10px] py-0 px-1.5 text-stone-400 capitalize border-stone-200 ml-auto">{t}</Badge>
           ))}
         </div>
       </CardContent>
