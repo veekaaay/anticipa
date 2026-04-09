@@ -22,10 +22,15 @@ export async function fetchFashionImage(query: string): Promise<string | null> {
 }
 
 async function fromSerpAPI(query: string, key: string): Promise<string | null> {
+  // Try Google Shopping first — always returns clean product shots on white/plain backgrounds
+  const shopping = await fromSerpAPIShopping(query, key)
+  if (shopping) return shopping
+
+  // Fall back to Google Images with "product photo" bias
   try {
     const params = new URLSearchParams({
       engine: 'google_images',
-      q: query,
+      q: `${query} product photo`,
       api_key: key,
       num: '5',
       safe: 'active',
@@ -37,9 +42,30 @@ async function fromSerpAPI(query: string, key: string): Promise<string | null> {
     const data = await res.json()
     const results: Array<{ original: string; thumbnail: string }> = data.images_results ?? []
     if (!results.length) return null
-    // Pick from first 3 results, prefer original over thumbnail
     const pick = results[Math.floor(Math.random() * Math.min(3, results.length))]
     return pick.original ?? pick.thumbnail ?? null
+  } catch {
+    return null
+  }
+}
+
+async function fromSerpAPIShopping(query: string, key: string): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      engine: 'google_shopping',
+      q: query,
+      api_key: key,
+      num: '5',
+    })
+    const res = await fetch(`https://serpapi.com/search?${params}`, {
+      next: { revalidate: 86400 },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const results: Array<{ thumbnail: string }> = data.shopping_results ?? []
+    const withImages = results.filter(r => r.thumbnail)
+    if (!withImages.length) return null
+    return withImages[Math.floor(Math.random() * Math.min(3, withImages.length))].thumbnail
   } catch {
     return null
   }
@@ -89,22 +115,18 @@ export function wardrobeImageQuery(opts: {
   colors: string[]
   style_tags: string[]
 }): string {
-  const parts: string[] = []
+  // Build a tight product-focused query — avoid words that pull lifestyle/model photos
+  const color = opts.colors[0] ?? ''
+  const item = opts.subcategory || opts.category
 
-  // Prefer the AI description as it's most specific
+  // If AI gave a clean description, use it as the base (it's the most specific)
   if (opts.description && opts.description !== 'Item added manually') {
-    parts.push(opts.description)
-  } else {
-    if (opts.colors[0]) parts.push(opts.colors[0])
-    parts.push(opts.subcategory || opts.category)
+    // Strip lifestyle phrases that skew results toward model photos
+    const cleaned = opts.description
+      .replace(/\b(worn by|styled with|paired with|model|woman|man|person|wearing|outfit)\b/gi, '')
+      .trim()
+    return `${cleaned} clothing product`
   }
 
-  // Add style context if not already captured
-  const style = opts.style_tags[0]
-  if (style && !parts.join(' ').toLowerCase().includes(style)) {
-    parts.push(style)
-  }
-
-  parts.push('fashion')
-  return parts.join(' ')
+  return `${color} ${item} clothing product`.trim()
 }
