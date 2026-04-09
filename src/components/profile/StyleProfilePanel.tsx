@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export default function StyleProfilePanel({ initial }: Props) {
+  const router = useRouter()
   const [gender, setGender] = useState(initial?.gender ?? 'unisex')
   const [budgetMin, setBudgetMin] = useState(initial?.budget_min?.toString() ?? '')
   const [username, setUsername] = useState(initial?.username ?? '')
@@ -80,6 +82,7 @@ export default function StyleProfilePanel({ initial }: Props) {
         throw new Error(e.error)
       }
       toast.success('Style profile saved')
+      router.refresh()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to save profile')
     } finally {
