@@ -208,7 +208,7 @@ export default function WishlistPanel({ initial }: { initial: WishlistItem[] }) 
 
 function WishlistCard({ item, onDelete }: { item: WishlistItem; onDelete: (id: string) => void }) {
   return (
-    <Card className="group border-stone-200 shadow-none overflow-hidden">
+    <Card className="group border-stone-200 shadow-none overflow-hidden p-0 gap-0">
       <div className="relative h-40 overflow-hidden bg-stone-100">
         {item.image_url ? (
           <Image

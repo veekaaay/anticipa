@@ -127,7 +127,7 @@ function RecommendationCard({ rec, rank }: { rec: Recommendation; rank: number }
   const label = shopLabel(rec)
 
   return (
-    <Card className="border-stone-200 shadow-none overflow-hidden flex flex-col">
+    <Card className="border-stone-200 shadow-none overflow-hidden flex flex-col p-0 gap-0">
       {/* Image / placeholder — tall and impactful */}
       <div className="relative h-52 flex-shrink-0 overflow-hidden" style={{ background: gradient }}>
         {rec.image_url ? (

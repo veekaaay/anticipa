@@ -313,7 +313,7 @@ function WardrobeCard({ item, onDelete }: { item: WardrobeItem; onDelete: (id: s
   const gradient = itemGradient(item.colors)
 
   return (
-    <Card className="group border-stone-200 shadow-none overflow-hidden">
+    <Card className="group border-stone-200 shadow-none overflow-hidden p-0 gap-0">
       {/* Visual area */}
       <div className={`relative overflow-hidden ${item.image_url ? 'aspect-[3/4]' : ''}`}>
         {item.image_url ? (
