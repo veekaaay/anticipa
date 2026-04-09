@@ -41,11 +41,13 @@ export async function findDeals(searchQuery: string, budgetMax?: number): Promis
 
     // Pick the best value result (lowest price with decent rating)
     const scored = results
-      .filter(r => r.price && r.link)
+      .filter(r => r.price && r.link && /^https?:\/\//.test(r.link))
       .map(r => {
         const price = parseFloat(r.price.replace(/[^0-9.]/g, ''))
         const rating = r.rating || 3
-        return { ...r, numPrice: price, score: (rating / 5) * 0.4 + (1 - price / 500) * 0.6 }
+        // Normalise price score: clamp to 0-1 range regardless of price
+        const priceScore = Math.max(0, 1 - price / 1000)
+        return { ...r, numPrice: price, score: (rating / 5) * 0.4 + priceScore * 0.6 }
       })
       .filter(r => !isNaN(r.numPrice) && r.numPrice > 0)
       .sort((a, b) => b.score - a.score)

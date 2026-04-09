@@ -42,10 +42,16 @@ export async function POST() {
   }
 
   // Generate AI recommendations
-  const aiRecs = await generateRecommendations(wardrobe, wishlist, {
-    min: profile?.budget_min ?? undefined,
-    max: profile?.budget_max ?? undefined,
-  })
+  let aiRecs
+  try {
+    aiRecs = await generateRecommendations(wardrobe, wishlist, {
+      min: profile?.budget_min ?? undefined,
+      max: profile?.budget_max ?? undefined,
+    })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'AI generation failed'
+    return NextResponse.json({ error: msg }, { status: 502 })
+  }
 
   // Find real deals for each recommendation in parallel
   const withDeals = await Promise.all(

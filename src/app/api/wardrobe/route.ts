@@ -29,16 +29,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
   }
   const file = formData.get('image') as File | null
-  const textDescription = formData.get('description') as string | null
+  const textDescription = (formData.get('description') as string | null)?.slice(0, 500) ?? null
+
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  const MAX_BYTES = 10 * 1024 * 1024 // 10 MB
 
   let imageUrl: string | null = null
   let analysis
 
   if (file) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: 'Only JPG, PNG, WEBP or GIF images are allowed' }, { status: 400 })
+    }
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: 'Image must be under 10 MB' }, { status: 400 })
+    }
+
+    // Sanitise filename — strip path separators and non-printable chars
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100)
+
     // Upload to Supabase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const path = `${user.id}/${Date.now()}-${file.name}`
+    const path = `${user.id}/${Date.now()}-${safeName}`
 
     const { error: uploadError } = await supabase.storage
       .from('wardrobe')

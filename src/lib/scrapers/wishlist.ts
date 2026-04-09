@@ -7,9 +7,24 @@ type RawImport = Omit<WishlistItem, 'id' | 'user_id' | 'created_at' | 'style_tag
   currency?: string
 }
 
-export async function scrapeWishlistURL(url: string): Promise<RawImport[]> {
-  const { hostname } = new URL(url)
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1|0\.0\.0\.0)/
 
+export async function scrapeWishlistURL(url: string): Promise<RawImport[]> {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    throw new Error('Invalid URL')
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('Only http/https URLs are supported')
+  }
+  if (BLOCKED_HOSTS.test(parsed.hostname)) {
+    throw new Error('That URL is not allowed')
+  }
+
+  const { hostname } = parsed
   if (hostname.includes('pinterest')) return scrapePinterest(url)
   if (hostname.includes('amazon')) return scrapeAmazon(url)
   return scrapeGeneric(url)
