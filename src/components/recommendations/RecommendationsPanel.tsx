@@ -26,10 +26,12 @@ export default function RecommendationsPanel({
   initial,
   wardrobeCount,
   wishlistCount,
+  picksStale,
 }: {
   initial: Recommendation[]
   wardrobeCount: number
   wishlistCount: number
+  picksStale?: boolean
 }) {
   const router = useRouter()
   const [recs, setRecs] = useState(initial)
@@ -77,6 +79,15 @@ export default function RecommendationsPanel({
       {!canGenerate && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-700">
           Add at least one wardrobe item or wishlist item first — Anticipa needs to learn your style before making picks.
+        </div>
+      )}
+
+      {picksStale && !loading && (
+        <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-sm text-stone-600 flex items-center justify-between gap-3">
+          <span>Your wardrobe or wishlist changed since these picks were generated.</span>
+          <button onClick={generate} className="shrink-0 text-xs font-medium text-stone-800 underline underline-offset-2">
+            Refresh picks
+          </button>
         </div>
       )}
 

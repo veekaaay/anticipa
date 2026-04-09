@@ -21,7 +21,16 @@ export default async function DashboardPage() {
   const wardrobeCount = wardrobe?.length ?? 0
   const wishlistCount = wishlist?.length ?? 0
   const recCount = recommendations?.length ?? 0
-  const handle = (profile as StyleProfile | null)?.username || user!.email!.split('@')[0]
+  const handle = (profile as StyleProfile | null)?.username || user!.email?.split('@')[0] || 'there'
+
+  // Picks are stale if wardrobe/wishlist was updated after the last recs generation
+  const lastRecAt = recommendations?.[0]?.created_at ? new Date(recommendations[0].created_at) : null
+  const lastWardrobeAt = wardrobe?.[0]?.created_at ? new Date(wardrobe[0].created_at) : null
+  const lastWishlistAt = wishlist?.[0]?.created_at ? new Date(wishlist[0].created_at) : null
+  const picksStale = lastRecAt && (
+    (lastWardrobeAt && lastWardrobeAt > lastRecAt) ||
+    (lastWishlistAt && lastWishlistAt > lastRecAt)
+  )
 
   // Nudge copy based on what's missing
   const nudge = wardrobeCount === 0
@@ -83,6 +92,7 @@ export default async function DashboardPage() {
             initial={recommendations ?? []}
             wardrobeCount={wardrobeCount}
             wishlistCount={wishlistCount}
+            picksStale={!!picksStale}
           />
         </TabsContent>
         <TabsContent value="wardrobe" keepMounted>

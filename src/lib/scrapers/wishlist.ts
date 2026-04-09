@@ -31,15 +31,22 @@ export async function scrapeWishlistURL(url: string): Promise<RawImport[]> {
 }
 
 async function fetchHTML(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; Anticipa/1.0)',
-      'Accept': 'text/html,application/xhtml+xml',
-    },
-    next: { revalidate: 0 },
-  })
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`)
-  return res.text()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000) // 10s hard timeout
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Anticipa/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      next: { revalidate: 0 },
+    })
+    if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`)
+    return res.text()
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function scrapePinterest(url: string): Promise<RawImport[]> {

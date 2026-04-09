@@ -9,6 +9,16 @@ function parseJSON<T>(text: string): T {
   return JSON.parse(clean) as T
 }
 
+/** Strip characters that could be used for prompt injection from user-supplied text */
+function sanitize(text: string, maxLen = 200): string {
+  return text
+    .replace(/[\r\n]+/g, ' ')          // collapse newlines
+    .replace(/[`"\\]/g, '')            // strip backticks, quotes, backslashes
+    .replace(/\binstructions?\b.*$/i, '') // cut off "ignore instructions" attacks
+    .trim()
+    .slice(0, maxLen)
+}
+
 /** Retry a Gemini call up to 3 times on 503/429 with exponential backoff */
 async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -91,11 +101,11 @@ export async function generateRecommendations(
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const wardrobeSummary = wardrobe.map((w, i) =>
-    `[${i + 1}] ${w.subcategory || w.category} — colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'untagged'}${w.brand ? `, brand: ${w.brand}` : ''}${w.description ? `, desc: ${w.description}` : ''}`
+    `[${i + 1}] ${w.subcategory || w.category} — colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'untagged'}${w.brand ? `, brand: ${sanitize(w.brand, 50)}` : ''}${w.description ? `, desc: ${sanitize(w.description)}` : ''}`
   ).join('\n')
 
   const wishlistSummary = wishlist.map(w =>
-    `• "${w.title}" — category: ${w.category || 'unknown'}, colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'unknown'}${w.price ? `, price: $${w.price}` : ''}`
+    `• "${sanitize(w.title)}" — category: ${w.category || 'unknown'}, colors: ${w.colors.join(', ') || 'unknown'}, style: ${w.style_tags.join(', ') || 'unknown'}${w.price ? `, price: $${w.price}` : ''}`
   ).join('\n')
 
   // Pre-compute wardrobe gap analysis in JS (more reliable than letting Gemini infer it)

@@ -42,6 +42,22 @@ export async function POST() {
     )
   }
 
+  // Rate limit: prevent re-generation within 60 seconds
+  const { data: latest } = await supabase
+    .from('recommendations')
+    .select('created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (latest && Date.now() - new Date(latest.created_at).getTime() < 60_000) {
+    return NextResponse.json(
+      { error: 'Please wait a moment before regenerating picks' },
+      { status: 429 }
+    )
+  }
+
   // Generate AI recommendations
   let aiRecs
   try {
