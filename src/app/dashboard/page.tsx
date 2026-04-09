@@ -18,10 +18,23 @@ export default async function DashboardPage() {
     supabase.from('style_profiles').select('*').eq('user_id', user!.id).maybeSingle(),
   ])
 
+  // Auto-create profile for new users using username from signup metadata
+  if (!profile) {
+    const username = (user!.user_metadata as Record<string, string> | undefined)?.username ?? null
+    await supabase.from('style_profiles').insert({
+      user_id: user!.id,
+      username,
+      dominant_styles: [],
+      color_palette: [],
+      preferred_categories: [],
+    })
+  }
+
   const wardrobeCount = wardrobe?.length ?? 0
   const wishlistCount = wishlist?.length ?? 0
   const recCount = recommendations?.length ?? 0
-  const handle = (profile as StyleProfile | null)?.username || user!.email?.split('@')[0] || 'there'
+  const metaUsername = (user!.user_metadata as Record<string, string> | undefined)?.username ?? null
+  const handle = (profile as StyleProfile | null)?.username || metaUsername || user!.email?.split('@')[0] || 'there'
 
   // Picks are stale if wardrobe/wishlist was updated after the last recs generation
   const lastRecAt = recommendations?.[0]?.created_at ? new Date(recommendations[0].created_at) : null

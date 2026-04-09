@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Sparkles } from 'lucide-react'
 
 export default function SignupPage() {
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,7 +23,10 @@ export default function SignupPage() {
     setError('')
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { emailRedirectTo: `${location.origin}/dashboard` }
+      options: {
+        emailRedirectTo: `${location.origin}/dashboard`,
+        data: { username: username.trim() || null },
+      },
     })
     if (error) { setError(error.message); setLoading(false) }
     else setDone(true)
@@ -53,6 +57,10 @@ export default function SignupPage() {
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
               {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-md">{error}</p>}
+              <div className="space-y-1.5">
+                <Label htmlFor="username">Your name</Label>
+                <Input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="e.g. Alex" maxLength={40} />
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" />
