@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { Plus, Upload, Type, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,25 @@ export default function WardrobePanel({ initial }: { initial: WardrobeItem[] }) 
   const fileRef = useRef<HTMLInputElement>(null)
 
   const visible = filter === 'all' ? items : items.filter(i => i.category === filter)
+
+  // Backfill images for existing items that have none
+  useEffect(() => {
+    const hasItemsWithNoImage = items.some(i => !i.image_url)
+    if (!hasItemsWithNoImage) return
+    fetch('/api/wardrobe/backfill-images', { method: 'POST' })
+      .then(r => r.json())
+      .then(({ updated }) => {
+        if (updated > 0) {
+          // Reload items to pick up the new image URLs
+          fetch('/api/wardrobe')
+            .then(r => r.json())
+            .then(fresh => setItems(fresh))
+            .catch(() => {})
+        }
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleFile(f: File) {
     setFile(f)

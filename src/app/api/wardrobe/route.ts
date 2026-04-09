@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { analyseWardrobeImage, analyseWardrobeText } from '@/lib/ai/gemini'
-import { fetchFashionImage } from '@/lib/images'
+import { fetchFashionImage, wardrobeImageQuery } from '@/lib/images'
 
 export async function GET() {
   const supabase = await createClient()
@@ -68,9 +68,13 @@ export async function POST(req: NextRequest) {
     analysis = await analyseWardrobeImage(base64, file.type)
   } else if (textDescription) {
     analysis = await analyseWardrobeText(textDescription)
-    // Fetch a representative fashion image from Pexels using the AI description
-    const query = [analysis.subcategory || analysis.category, analysis.colors[0], 'fashion clothing']
-      .filter(Boolean).join(' ')
+    const query = wardrobeImageQuery({
+      description: analysis.description,
+      subcategory: analysis.subcategory,
+      category: analysis.category,
+      colors: analysis.colors,
+      style_tags: analysis.style_tags,
+    })
     imageUrl = await fetchFashionImage(query)
   } else {
     return NextResponse.json({ error: 'Provide an image or description' }, { status: 400 })

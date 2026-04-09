@@ -1,19 +1,54 @@
+/**
+ * Fashion image fetching — priority chain:
+ * 1. SerpAPI Google Images (best relevance — reuses existing SERPAPI_KEY)
+ * 2. Pexels (high quality stock — needs PEXELS_API_KEY)
+ * 3. Openverse CC (free fallback, no key needed, quality varies)
+ */
+
 export async function fetchFashionImage(query: string): Promise<string | null> {
-  // Prefer Pexels if key is available (higher quality product photos)
+  const serpKey = process.env.SERPAPI_KEY
+  if (serpKey) {
+    const url = await fromSerpAPI(query, serpKey)
+    if (url) return url
+  }
+
   const pexelsKey = process.env.PEXELS_API_KEY
   if (pexelsKey) {
     const url = await fromPexels(query, pexelsKey)
     if (url) return url
   }
 
-  // Free fallback: Openverse (Creative Commons licensed fashion photos, no key needed)
   return fromOpenverse(query)
+}
+
+async function fromSerpAPI(query: string, key: string): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      engine: 'google_images',
+      q: query,
+      api_key: key,
+      num: '5',
+      safe: 'active',
+    })
+    const res = await fetch(`https://serpapi.com/search?${params}`, {
+      next: { revalidate: 86400 },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const results: Array<{ original: string; thumbnail: string }> = data.images_results ?? []
+    if (!results.length) return null
+    // Pick from first 3 results, prefer original over thumbnail
+    const pick = results[Math.floor(Math.random() * Math.min(3, results.length))]
+    return pick.original ?? pick.thumbnail ?? null
+  } catch {
+    return null
+  }
 }
 
 async function fromPexels(query: string, key: string): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=portrait`,
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=portrait`,
       { headers: { Authorization: key }, next: { revalidate: 86400 } }
     )
     if (!res.ok) return null
@@ -29,7 +64,7 @@ async function fromPexels(query: string, key: string): Promise<string | null> {
 async function fromOpenverse(query: string): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query + ' clothing fashion')}&page_size=10&license_type=commercial`,
+      `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&page_size=10&license_type=commercial`,
       { next: { revalidate: 86400 } }
     )
     if (!res.ok) return null
@@ -41,4 +76,35 @@ async function fromOpenverse(query: string): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+/**
+ * Build a focused search query for a wardrobe item from its AI analysis.
+ * More specific than just subcategory + color.
+ */
+export function wardrobeImageQuery(opts: {
+  description: string | null
+  subcategory: string | null
+  category: string
+  colors: string[]
+  style_tags: string[]
+}): string {
+  const parts: string[] = []
+
+  // Prefer the AI description as it's most specific
+  if (opts.description && opts.description !== 'Item added manually') {
+    parts.push(opts.description)
+  } else {
+    if (opts.colors[0]) parts.push(opts.colors[0])
+    parts.push(opts.subcategory || opts.category)
+  }
+
+  // Add style context if not already captured
+  const style = opts.style_tags[0]
+  if (style && !parts.join(' ').toLowerCase().includes(style)) {
+    parts.push(style)
+  }
+
+  parts.push('fashion')
+  return parts.join(' ')
 }
