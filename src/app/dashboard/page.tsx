@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   const nudge = wardrobeCount === 0
     ? 'Start by adding a few wardrobe items so Anticipa can learn your style.'
     : wishlistCount === 0
-    ? 'Import a Pinterest board or wishlist URL to improve your picks.'
+    ? 'Style yourself with your Wardrobe and wishlist.'
     : recCount === 0
     ? 'Hit "Generate picks" in the Picks tab to get your first curated shopping list.'
     : null
